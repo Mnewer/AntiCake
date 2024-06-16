@@ -16,7 +16,8 @@ cap = cv2.VideoCapture(0)
 if not cap.isOpened():
     print("Unable to read camera feed")
 
-frame_count = 354
+# Update the counter continue to save more images
+frame_count = 561
 while True:
     # Capture frame-by-frame
     ret, frame = cap.read()

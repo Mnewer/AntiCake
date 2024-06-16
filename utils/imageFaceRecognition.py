@@ -1,6 +1,11 @@
 import cv2
 import matplotlib.pyplot as plt
+import os
 
+# Detect faces in an image:
+
+# Algorithm
+alg = os.path.dirname(os.path.realpath(__file__)) + '/haarcascade_frontalface_default.xml'
 
 # Path to the image
 imagePath = 'image.jpg'
@@ -13,7 +18,7 @@ gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 # Load the classifier and create a cascade object for face detection
 face_classifier = cv2.CascadeClassifier(
-    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    cv2.data.haarcascades + alg
 )
 
 # Detect faces in the image
