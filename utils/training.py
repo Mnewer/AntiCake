@@ -15,8 +15,8 @@ face_recognizer = cv2.face.LBPHFaceRecognizer_create()
 # Initialize the face detector
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-faces = face_cascade.detectMultiScale(img, scaleFactor=1.05, minNeighbors=5)
-faces = face_cascade.detectMultiScale(img, scaleFactor=1.05, minNeighbors=3)
+# faces = face_cascade.detectMultiScale(img, scaleFactor=1.05, minNeighbors=5)
+# faces = face_cascade.detectMultiScale(img, scaleFactor=1.05, minNeighbors=3)
 
 # Initialize arrays to hold the training images and labels
 images = []
@@ -52,9 +52,9 @@ for filename in os.listdir(path):
             images.append(np.array(face, 'uint8'))
             labels.append(label_dict[filename])
 
-            # flipped_face = cv2.flip(face, 1)
-            # images.append(np.array(flipped_face, 'uint8'))
-            # labels.append(label_dict[filename])
+            flipped_face = cv2.flip(face, 1)
+            images.append(np.array(flipped_face, 'uint8'))
+            labels.append(label_dict[filename])
 
 assert len(images) == len(labels), "The number of images and labels should be the same!"
 
@@ -62,7 +62,8 @@ for img in images:
     assert len(img.shape) == 2, "The images should be 2D arrays!"
 
 # Train the face recognizer
-face_recognizer.train(images, np.array(labels))
+if images and labels:
+    face_recognizer.train(images, np.array(labels))
 
 # Save the trained model
 face_recognizer.save('model/trained_model.yml')
