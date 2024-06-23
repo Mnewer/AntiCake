@@ -45,8 +45,23 @@ def show_images(directory):
         if img is not None:
             detectEyes(img)
             # Add descriptive text
-            cv2.putText(img, "Use 'A/D' keys to navigate, 'Q' to quit, 'K' to delete", (20, 100), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 1.7, (0,255,0), 6)
+            # Prepare the text to be displayed
+            instructions = "Press 'A'/'D' to navigate, 'K' to delete image and 'Q' to quit"
+
+            # Set font, scale, color, and thickness for the text
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            font_scale = 0.7
+            color = (255, 255, 255)  # White color
+            thickness = 2
+            line_type = cv2.LINE_AA
+
+            # Get the text size to position it at the bottom of the window
+            text_size = cv2.getTextSize(instructions, font, font_scale, thickness)[0]
+            text_x = (img.shape[1] - text_size[0]) // 2  # Center the text horizontally
+            text_y = img.shape[0] - 10  # Position the text at the bottom of the window
+
+            # Put the text on the frame
+            cv2.putText(img, instructions, (text_x, text_y), font, font_scale, color, thickness, line_type)
             cv2.imshow('Image', img)
             key = cv2.waitKey(0) & 0xFF
             
@@ -56,7 +71,7 @@ def show_images(directory):
                 index += 1
             elif key == ord('q'):  # 'q' pressed
                 break
-            elif key == ord('k'):  # 'k' pressed
+            elif key == ord('k'):  # 'k' pressedd
                 os.remove(path)
                 print(f"Deleted {filename}")
                 filenames.pop(index)  # Remove the filename from the list
