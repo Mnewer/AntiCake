@@ -1,4 +1,5 @@
 import cv2
+import os
 
 class Camera:
     def __init__(self):
@@ -9,16 +10,25 @@ class Camera:
         if not self.cap.isOpened():
             print("Unable to read camera feed")
     
-    def open_camera_feed(self):
+
+    def _open_camera_feed(self, instructions: str = "Press 'Q' to quit", path: str = None):
+        """
+        Opens the camera feed and displays the frames.
+
+        Args:
+            instructions (str, optional): Instructions to be displayed on the frame. Defaults to "Press 'Q' to quit".
+            path (str, optional): Path to save captured images. Defaults to None.
+
+        Returns:
+            None
+        """
+        
         while True:
             ret, frame = self.cap.read()
-    
+
             if not ret:
                 print("Unable to read camera feed")
                 break
-
-            # Basic instructions to be displayed on the screen
-            instructions = "Press 'Q' to quit"
 
             # Set font, scale, color, and thickness for the text
             font = cv2.FONT_HERSHEY_SIMPLEX
@@ -34,14 +44,35 @@ class Camera:
             # Put the text on the frame
             cv2.putText(frame, instructions, (text_x, text_y), font, font_scale, color, thickness, line_type)
 
-    
             # Display the resulting frame
             cv2.imshow('frame', frame)
-    
+
             # Press 'q' on keyboard to exit
-            if cv2.waitKey(1) & 0xFF == ord('q'):
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
                 break
+            elif key == ord('c') and path is not None:
+                self._capture_image(frame, path)
+
+
+    def _capture_image(self, frame, path):
+        # Check the last captured frame number by counting the number of files in the directory and incrementing by 1
+        frame_count = len([name for name in os.listdir(path) if os.path.isfile(os.path.join(path, name))]) + 1
+            
+        # Ensure the filename is unique to avoid overwriting
+        while os.path.exists(os.path.join(path, f'frame{frame_count}.jpg')):
+            frame_count += 1
+        ret, frame = self.cap.read() 
+        cv2.imwrite(os.path.join(path, f'frame{frame_count}.jpg'), frame)
+        print(f"Image saved as frame{frame_count}.jpg")
+        frame_count += 1
     
+    def capture_image(self, path):
+        #Method spesific instructions:
+        instructions = "Press 'C' to capture, 'Q' to quit"
+        self._open_camera_feed(instructions, path)
+                
+    # Release the camera and close the window
     def __del__(self):
         # Release the camera
         self.cap.release()
