@@ -22,7 +22,7 @@ class Camera:
         Returns:
             None
         """
-        
+
         while True:
             ret, frame = self.cap.read()
 
@@ -56,6 +56,16 @@ class Camera:
 
 
     def _capture_image(self, frame, path):
+        """
+        Captures and saves an image from the camera feed.
+
+        Args:
+            frame: The current frame from the camera feed.
+            path: The directory path where the image will be saved.
+
+        Returns:
+            None
+        """
         # Check the last captured frame number by counting the number of files in the directory and incrementing by 1
         frame_count = len([name for name in os.listdir(path) if os.path.isfile(os.path.join(path, name))]) + 1
             
@@ -68,9 +78,18 @@ class Camera:
         frame_count += 1
     
     def capture_image(self, path):
-        #Method spesific instructions:
-        instructions = "Press 'C' to capture, 'Q' to quit"
-        self._open_camera_feed(instructions, path)
+            """
+            Captures an image from the camera feed and saves it to the specified path.
+
+            Args:
+                path (str): The path where the captured image will be saved.
+
+            Returns:
+                None
+            """
+            # Method specific instructions:
+            instructions = "Press 'C' to capture, 'Q' to quit"
+            self._open_camera_feed(instructions, path)
                 
     # Release the camera and close the window
     def __del__(self):
