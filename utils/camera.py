@@ -77,7 +77,7 @@ class Camera:
         print(f"Image saved as frame{frame_count}.jpg")
         frame_count += 1
     
-    def capture_image(self, path):
+    def capture_image(self, path = "trainingImages"):
             """
             Captures an image from the camera feed and saves it to the specified path.
 
