@@ -11,6 +11,7 @@ class Application(tk.Frame):
         self.master = master
         self.image_folder = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'trainingImages')
         self.current_image = None
+        self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
         self.pack(fill=tk.BOTH, expand=True)
         self.create_widgets()
         self.update_quality_info()
@@ -35,8 +36,11 @@ class Application(tk.Frame):
         self.prev_button = tk.Button(self.nav_frame, text="Previous", command=self.prev_image)
         self.prev_button.grid(row=0, column=0, padx=5)
 
+        self.delete_button = tk.Button(self.nav_frame, text="Delete", command=self.delete_current_image, fg="red")
+        self.delete_button.grid(row=0, column=1, padx=5)
+
         self.next_button = tk.Button(self.nav_frame, text="Next", command=self.next_image)
-        self.next_button.grid(row=0, column=1, padx=5)
+        self.next_button.grid(row=0, column=2, padx=5)
 
         # Column 2: Image quality info
         self.column2 = tk.Frame(self)
@@ -45,9 +49,13 @@ class Application(tk.Frame):
         self.quality_frame = ttk.LabelFrame(self.column2, text="Image Quality Info")
         self.quality_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.quality_tree = ttk.Treeview(self.quality_frame, columns=('Filename', 'Laplacian'), show='headings')
+        self.quality_tree = ttk.Treeview(self.quality_frame, columns=('Filename', 'Laplacian', 'Face Detected'), show='headings')
         self.quality_tree.heading('Filename', text='Filename')
         self.quality_tree.heading('Laplacian', text='Laplacian Value')
+        self.quality_tree.heading('Face Detected', text='Face Detected')
+        self.quality_tree.column('Filename', width=150)
+        self.quality_tree.column('Laplacian', width=100)
+        self.quality_tree.column('Face Detected', width=100)
         self.quality_tree.pack(fill=tk.BOTH, expand=True)
         self.quality_tree.bind('<<TreeviewSelect>>', self.on_tree_select)
 
@@ -85,9 +93,15 @@ class Application(tk.Frame):
         for filename in sorted(os.listdir(self.image_folder)):
             if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
                 image_path = os.path.join(self.image_folder, filename)
-                image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-                laplacian_variance = imageQualityCheck.variance_of_laplacian(image)
-                self.quality_tree.insert('', 'end', values=(filename, f"{laplacian_variance:.2f}"))
+                image = cv2.imread(image_path)
+                gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                laplacian_variance = imageQualityCheck.variance_of_laplacian(gray)
+                
+                # Detect face
+                faces = self.face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+                face_detected = "Yes" if len(faces) > 0 else "No"
+                
+                self.quality_tree.insert('', 'end', values=(filename, f"{laplacian_variance:.2f}", face_detected))
 
     def select_first_image(self):
         if self.quality_tree.get_children():
@@ -158,3 +172,11 @@ class Application(tk.Frame):
     def train_model(self):
         # Implement model training functionality
         pass
+
+    def delete_current_image(self):
+        if self.current_image:
+            if messagebox.askyesno("Delete Image", f"Are you sure you want to delete {self.current_image}?"):
+                os.remove(os.path.join(self.image_folder, self.current_image))
+                self.update_quality_info()
+                self.select_first_image()
+                messagebox.showinfo("Delete Image", f"{self.current_image} has been deleted.")
