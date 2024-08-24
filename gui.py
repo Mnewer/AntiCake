@@ -1,211 +1,160 @@
 import tkinter as tk
-from tkinter import ttk
-from tkinter import filedialog
-from PIL import Image, ImageTk
+from tkinter import messagebox, ttk
+from utils import imageQualityCheck, removeUndetectable, alignFaces
 import os
-from utils import camera
+import cv2
+from PIL import Image, ImageTk
 
 class Application(tk.Frame):
     def __init__(self, master=None):
         super().__init__(master)
         self.master = master
-        self.master.geometry("1000x400")
-        self.pack()
+        self.image_folder = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'trainingImages')
+        self.current_image = None
+        self.pack(fill=tk.BOTH, expand=True)
         self.create_widgets()
-        self.populate_image_list()
-        self.image_folder = "trainingImages"
-        self.images = []
-        # self.check_for_new_images()
+        self.update_quality_info()
+        self.select_first_image()
 
     def create_widgets(self):
-        self.frame_image_interaction = tk.Frame(self)
+        # Column 1: Image preview and navigation
+        self.column1 = tk.Frame(self, width=400, height=500)
+        self.column1.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        self.column1.grid_propagate(False)
 
-        self.frame_image_interaction.grid(row=0, column=0, rowspan=2, sticky="nsew")
+        self.image_frame = tk.Frame(self.column1, width=400, height=400)
+        self.image_frame.grid(row=0, column=0, pady=(0, 10))
+        self.image_frame.grid_propagate(False)
 
-        self.image_preview = tk.Label(self.frame_image_interaction, text="Image Preview")
-        self.image_preview.grid(row=0, column=0, sticky="nsew")
+        self.image_label = tk.Label(self.image_frame)
+        self.image_label.place(relx=0.5, rely=0.5, anchor="center")
 
-        # Create a frame for the navigation buttons
-        self.frame_navigation = tk.Frame(self.frame_image_interaction)
-        self.frame_navigation.grid(row=1, column=0, sticky="ew")
+        self.nav_frame = tk.Frame(self.column1)
+        self.nav_frame.grid(row=1, column=0)
 
-        self.back_button = tk.Button(self.frame_navigation, text="Back", command=self.show_previous_image)
-        self.back_button.grid(row=0, column=0, sticky="w")
+        self.prev_button = tk.Button(self.nav_frame, text="Previous", command=self.prev_image)
+        self.prev_button.grid(row=0, column=0, padx=5)
 
-        self.upload_button = tk.Button(self.frame_navigation, text="Upload", command=self.upload_image)
-        self.upload_button.grid(row=0, column=1, sticky="w")
+        self.next_button = tk.Button(self.nav_frame, text="Next", command=self.next_image)
+        self.next_button.grid(row=0, column=1, padx=5)
 
-        self.next_button = tk.Button(self.frame_navigation, text="Next", command=self.show_next_image)
-        self.next_button.grid(row=0, column=2, sticky="w")
+        # Column 2: Image quality info
+        self.column2 = tk.Frame(self)
+        self.column2.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
 
-        # Create a listbox to display the image files
-        self.image_list = tk.Listbox(self)
-        self.image_list.grid(row=0, column=1, rowspan=2, sticky="nsew")
-        self.image_list.bind("<<ListboxSelect>>", self.on_image_select)
+        self.quality_frame = ttk.LabelFrame(self.column2, text="Image Quality Info")
+        self.quality_frame.pack(fill=tk.BOTH, expand=True)
 
+        self.quality_tree = ttk.Treeview(self.quality_frame, columns=('Filename', 'Laplacian'), show='headings')
+        self.quality_tree.heading('Filename', text='Filename')
+        self.quality_tree.heading('Laplacian', text='Laplacian Value')
+        self.quality_tree.pack(fill=tk.BOTH, expand=True)
+        self.quality_tree.bind('<<TreeviewSelect>>', self.on_tree_select)
 
-        # Controls frame:
-        self.frame_controls = tk.Frame(self)
-        self.frame_controls.grid(row=0, column=2, rowspan=2, sticky="nsew", padx=10)
+        # Column 3: Controls
+        self.column3 = tk.Frame(self)
+        self.column3.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
 
-        self.capture_button = tk.Button(self.frame_controls, text="Capture images", command=self.capture_image)
-        self.capture_button.pack(side="top", pady=5, anchor="w")
+        self.capture_button = tk.Button(self.column3, text="Capture images", command=self.capture_image)
+        self.capture_button.pack(fill=tk.X, pady=5)
 
-        self.remove_unclear_button = tk.Button(self.frame_controls, text="Remove unclear images")
-        self.remove_unclear_button.pack(side="top", pady=5, anchor="w")
+        self.threshold_frame = tk.Frame(self.column3)
+        self.threshold_frame.pack(fill=tk.X, pady=5)
 
-        self.prep_images_button = tk.Button(self.frame_controls, text="Prepare images")
-        self.prep_images_button.pack(side="top", pady=5, anchor="w")
+        self.threshold_label = tk.Label(self.threshold_frame, text="Threshold:")
+        self.threshold_label.pack(side=tk.LEFT)
 
-        self.train_button = tk.Button(self.frame_controls, text="Train model")
-        self.train_button.pack(side="top", pady=5, anchor="w")
-
-        self.quit = tk.Button(self.frame_controls, text="QUIT", fg="red", command=self.master.destroy)
-        self.quit.pack(side="bottom")
-
-        self.threshold_input = tk.Entry(self.frame_controls, width=10)
-        self.threshold_label = tk.Label(self.frame_controls, text="Threshold for unclear images:")
-        self.threshold_label.pack(side="top", pady=5, anchor="w")
-
+        self.threshold_input = tk.Entry(self.threshold_frame, width=5)
+        self.threshold_input.pack(side=tk.LEFT, padx=5)
         self.threshold_input.insert(0, "500")
-        self.threshold_input.pack(side="top", pady=5, anchor="w")
-        
 
-        # Configure grid weights to make the layout responsive
-        self.master.grid_rowconfigure(0, weight=1)
-        self.master.grid_rowconfigure(1, weight=1)
-        self.master.grid_columnconfigure(0, weight=1)
-        self.master.grid_columnconfigure(1, weight=1)
-        self.master.grid_columnconfigure(2, weight=1)
+        self.remove_unclear_button = tk.Button(self.column3, text="Remove unclear images", command=self.remove_unclear_images)
+        self.remove_unclear_button.pack(fill=tk.X, pady=5)
 
-    # MARK: Capture image
-    def capture_image(self):
-        cam = camera.Camera()
-        cam.capture_image()
+        self.prep_images_button = tk.Button(self.column3, text="Prep Images", command=self.prep_images)
+        self.prep_images_button.pack(fill=tk.X, pady=5)
 
-    # MARK: Populate image list
-    def populate_image_list(self):
-        """
-        Populates the image list in the GUI with image files from the specified folder.
+        self.train_button = tk.Button(self.column3, text="Train model", command=self.train_model)
+        self.train_button.pack(fill=tk.X, pady=5)
 
-        This method retrieves image files from the 'trainingImages' folder and adds them to the image list in the GUI.
-        Only files with the extensions '.png', '.jpg', '.jpeg', '.gif', and '.bmp' are considered as image files.
+        self.quit = tk.Button(self.column3, text="QUIT", fg="red", command=self.master.destroy)
+        self.quit.pack(fill=tk.X, pady=5)
 
-        If the 'trainingImages' folder exists, the method retrieves the image files and inserts their names into the image list.
-        The first image in the list is shown as the default image if there are any images available.
+    def update_quality_info(self):
+        self.quality_tree.delete(*self.quality_tree.get_children())
+        for filename in sorted(os.listdir(self.image_folder)):
+            if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+                image_path = os.path.join(self.image_folder, filename)
+                image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+                laplacian_variance = imageQualityCheck.variance_of_laplacian(image)
+                self.quality_tree.insert('', 'end', values=(filename, f"{laplacian_variance:.2f}"))
 
-        Args:
-            None
+    def select_first_image(self):
+        if self.quality_tree.get_children():
+            first_item = self.quality_tree.get_children()[0]
+            self.quality_tree.selection_set(first_item)
+            self.quality_tree.focus(first_item)
+            self.on_tree_select(None)
 
-        Returns:
-            None
-        """
-        image_folder = "trainingImages"
-        image_extensions = (".png", ".jpg", ".jpeg", ".gif", ".bmp")
-        
-        if os.path.exists(image_folder):
-            self.images = [file_name for file_name in os.listdir(image_folder) if file_name.lower().endswith(image_extensions)]
-            for file_name in self.images:
-                self.image_list.insert(tk.END, file_name)
-            
-            # Show the first image as default if there are images
-            if self.images:
-                self.current_image_index = 0
-                self.show_image(self.images[self.current_image_index])
+    def on_tree_select(self, event):
+        selected_items = self.quality_tree.selection()
+        if selected_items:
+            selected_item = selected_items[0]
+            filename = self.quality_tree.item(selected_item)['values'][0]
+            self.display_image(filename)
 
-    # MARK: Upload image
-    def upload_image(self):
-        """
-        Opens a file dialog to select an image file and copies it to the trainingImages folder.
-        Updates the image list, appends the image to the images list, and shows the selected image.
-
-        Returns:
-            None
-        """
-        file_path = filedialog.askopenfilename(title="Select an image file", filetypes=[("Image files", "*.png *.jpg *.jpeg *.gif *.bmp")])
-        if file_path:
-            file_name = os.path.basename(file_path)
-            image_folder = "trainingImages"
-            image_path = os.path.join(image_folder, file_name)
-            # copy the selected image to the trainingImages folder
-            try:
-                os.makedirs(image_folder, exist_ok=True)
-                os.replace(file_path, image_path)
-                self.image_list.insert(tk.END, file_name)
-                self.images.append(file_name)
-                self.current_image_index = len(self.images) - 1
-                self.show_image(file_name)
-            except OSError as e:
-                print(f"Error moving file: {e}")
-    
-
-    # MARK: Image selection
-    def on_image_select(self, event):
-        """
-        Event handler for when an image is selected from the image list.
-
-        Parameters:
-        - event: The event object representing the selection event.
-
-        Returns:
-        None
-        """
-        selected_index = self.image_list.curselection()
-        if selected_index:
-            self.current_image_index = selected_index[0]
-            selected_image = self.image_list.get(selected_index)
-            self.show_image(selected_image)
-
-
-    # MARK: Show image
-    def show_image(self, image_name):
-        """
-        Displays the specified image in the image preview box.
-
-        Parameters:
-        - image_name (str): The name of the image file to display.
-
-        Returns:
-        None
-        """
-        image_folder = "trainingImages"
-        image_path = os.path.join(image_folder, image_name)
+    def display_image(self, filename):
+        image_path = os.path.join(self.image_folder, filename)
         image = Image.open(image_path)
-        image = image.resize((400, 300), Image.LANCZOS)  # Resize the image to fit the preview box
+        image.thumbnail((380, 380))  # Resize image to fit in the frame
         photo = ImageTk.PhotoImage(image)
+        self.image_label.config(image=photo)
+        self.image_label.image = photo
+        self.current_image = filename
 
-        self.image_preview.config(image=photo)
-        self.image_preview.image = photo  # Keep a reference to avoid garbage collection
+    def prev_image(self):
+        current_index = self.get_current_index()
+        if current_index > 0:
+            prev_item = self.quality_tree.get_children()[current_index - 1]
+            self.quality_tree.selection_set(prev_item)
+            self.quality_tree.focus(prev_item)
+            self.on_tree_select(None)
 
-        # Highlight the current image in the list
-        self.image_list.selection_clear(0, tk.END)
-        self.image_list.selection_set(self.current_image_index)
-        self.image_list.see(self.current_image_index)
+    def next_image(self):
+        current_index = self.get_current_index()
+        if current_index < len(self.quality_tree.get_children()) - 1:
+            next_item = self.quality_tree.get_children()[current_index + 1]
+            self.quality_tree.selection_set(next_item)
+            self.quality_tree.focus(next_item)
+            self.on_tree_select(None)
 
-    # MARK: Show previous and next image
-    def show_previous_image(self):
-        """
-        Displays the previous image in the list of images.
+    def get_current_index(self):
+        selected_items = self.quality_tree.selection()
+        if selected_items:
+            return self.quality_tree.index(selected_items[0])
+        return -1
 
-        If there are no images, nothing will be displayed.
+    def remove_unclear_images(self):
+        try:
+            threshold = int(self.threshold_input.get())
+            removed_count = imageQualityCheck.remove_unclear_images(self.image_folder, threshold)
+            messagebox.showinfo("Remove Unclear Images", f"Removed {removed_count} unclear images.")
+            self.update_quality_info()
+            self.select_first_image()
+        except ValueError:
+            messagebox.showerror("Error", "Please enter a valid threshold value.")
 
-        The current image index is decremented by 1 and wrapped around to the end of the list if necessary.
-        The updated current image is then displayed using the `show_image` method.
-        """
-        if self.images:
-            self.current_image_index = (self.current_image_index - 1) % len(self.images)
-            self.show_image(self.images[self.current_image_index])
+    def prep_images(self):
+        removed_count = removeUndetectable.remove_undetectable_faces(self.image_folder)
+        aligned_count = alignFaces.align_faces(self.image_folder)
+        messagebox.showinfo("Prep Images", f"Removed {removed_count} images without detectable faces.\nAligned {aligned_count} faces.")
+        self.update_quality_info()
+        self.select_first_image()
 
-    def show_next_image(self):
-        """
-        Displays the next image in the list of images.
+    def capture_image(self):
+        # Implement image capture functionality
+        pass
 
-        If there are no images, nothing will be displayed.
-
-        The current image index is incremented by 1 and wrapped around to the start of the list if necessary.
-        The updated current image is then displayed using the `show_image` method.
-        """
-        if self.images:
-            self.current_image_index = (self.current_image_index + 1) % len(self.images)
-            self.show_image(self.images[self.current_image_index])
-
+    def train_model(self):
+        # Implement model training functionality
+        pass

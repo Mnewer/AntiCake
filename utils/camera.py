@@ -90,9 +90,22 @@ class Camera:
             # Method specific instructions:
             instructions = "Press 'C' to capture, 'Q' to quit"
             self._open_camera_feed(instructions, path)
-                
-    # Release the camera and close the window
-    def __del__(self):
-        # Release the camera
-        self.cap.release()
+
+
+    def close(self):
+        """
+        Closes the camera feed and releases resources.
+
+        This method ensures that the camera is properly closed and all OpenCV windows are destroyed.
+        It should be called when the camera object is no longer needed.
+
+        Returns:
+            None
+        """
+        if self.cap.isOpened():
+            self.cap.release()
         cv2.destroyAllWindows()
+        
+                
+    def __del__(self):
+        self.close()
