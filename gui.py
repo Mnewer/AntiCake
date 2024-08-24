@@ -23,28 +23,34 @@ class Application(tk.Frame):
         self.column1.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         self.column1.grid_propagate(False)
 
+        self.column1_header = tk.Label(self.column1, text="Image Preview", font=("Arial", 12, "bold"))
+        self.column1_header.grid(row=0, column=0, pady=(0, 10))
+
         self.image_frame = tk.Frame(self.column1, width=400, height=400)
-        self.image_frame.grid(row=0, column=0, pady=(0, 10))
+        self.image_frame.grid(row=1, column=0, pady=(0, 10))
         self.image_frame.grid_propagate(False)
 
         self.image_label = tk.Label(self.image_frame)
         self.image_label.place(relx=0.5, rely=0.5, anchor="center")
 
         self.nav_frame = tk.Frame(self.column1)
-        self.nav_frame.grid(row=1, column=0)
+        self.nav_frame.grid(row=2, column=0)
 
-        self.prev_button = tk.Button(self.nav_frame, text="Previous", command=self.prev_image)
+        self.prev_button = tk.Button(self.nav_frame, text="Previous", command=self.prev_image_wrap)
         self.prev_button.grid(row=0, column=0, padx=5)
 
         self.delete_button = tk.Button(self.nav_frame, text="Delete", command=self.delete_current_image, fg="red")
         self.delete_button.grid(row=0, column=1, padx=5)
 
-        self.next_button = tk.Button(self.nav_frame, text="Next", command=self.next_image)
+        self.next_button = tk.Button(self.nav_frame, text="Next", command=self.next_image_wrap)
         self.next_button.grid(row=0, column=2, padx=5)
 
         # Column 2: Image quality info
         self.column2 = tk.Frame(self)
         self.column2.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+
+        self.column2_header = tk.Label(self.column2, text="Image Quality Information", font=("Arial", 12, "bold"))
+        self.column2_header.pack(pady=(0, 10))
 
         self.quality_frame = ttk.LabelFrame(self.column2, text="Image Quality Info")
         self.quality_frame.pack(fill=tk.BOTH, expand=True)
@@ -56,12 +62,20 @@ class Application(tk.Frame):
         self.quality_tree.column('Filename', width=150)
         self.quality_tree.column('Laplacian', width=100)
         self.quality_tree.column('Face Detected', width=100)
-        self.quality_tree.pack(fill=tk.BOTH, expand=True)
+        self.quality_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self.quality_scrollbar = ttk.Scrollbar(self.quality_frame, orient="vertical", command=self.quality_tree.yview)
+        self.quality_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.quality_tree.configure(yscrollcommand=self.quality_scrollbar.set)
         self.quality_tree.bind('<<TreeviewSelect>>', self.on_tree_select)
 
         # Column 3: Controls
         self.column3 = tk.Frame(self)
         self.column3.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
+
+        self.column3_header = tk.Label(self.column3, text="Controls", font=("Arial", 12, "bold"))
+        self.column3_header.pack(pady=(0, 10))
 
         self.capture_button = tk.Button(self.column3, text="Capture images", command=self.capture_image)
         self.capture_button.pack(fill=tk.X, pady=5)
@@ -116,6 +130,7 @@ class Application(tk.Frame):
             selected_item = selected_items[0]
             filename = self.quality_tree.item(selected_item)['values'][0]
             self.display_image(filename)
+            self.quality_tree.see(selected_item)  # Ensure the selected item is visible
 
     def display_image(self, filename):
         image_path = os.path.join(self.image_folder, filename)
@@ -126,21 +141,27 @@ class Application(tk.Frame):
         self.image_label.image = photo
         self.current_image = filename
 
-    def prev_image(self):
+    def prev_image_wrap(self):
         current_index = self.get_current_index()
         if current_index > 0:
             prev_item = self.quality_tree.get_children()[current_index - 1]
-            self.quality_tree.selection_set(prev_item)
-            self.quality_tree.focus(prev_item)
-            self.on_tree_select(None)
+        else:
+            prev_item = self.quality_tree.get_children()[-1]  # Wrap to the last item
+        self.quality_tree.selection_set(prev_item)
+        self.quality_tree.focus(prev_item)
+        self.quality_tree.see(prev_item)  # Ensure the item is visible
+        self.on_tree_select(None)
 
-    def next_image(self):
+    def next_image_wrap(self):
         current_index = self.get_current_index()
         if current_index < len(self.quality_tree.get_children()) - 1:
             next_item = self.quality_tree.get_children()[current_index + 1]
-            self.quality_tree.selection_set(next_item)
-            self.quality_tree.focus(next_item)
-            self.on_tree_select(None)
+        else:
+            next_item = self.quality_tree.get_children()[0]  # Wrap to the first item
+        self.quality_tree.selection_set(next_item)
+        self.quality_tree.focus(next_item)
+        self.quality_tree.see(next_item)  # Ensure the item is visible
+        self.on_tree_select(None)
 
     def get_current_index(self):
         selected_items = self.quality_tree.selection()
