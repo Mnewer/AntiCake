@@ -3,6 +3,7 @@ from tkinter import messagebox, ttk
 from utils import imageQualityCheck, removeUndetectable, alignFaces
 import os
 import cv2
+import numpy as np
 from PIL import Image, ImageTk
 
 class Application(tk.Frame):
@@ -12,6 +13,8 @@ class Application(tk.Frame):
         self.image_folder = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'trainingImages')
         self.current_image = None
         self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        self.face_recognizer = cv2.face.LBPHFaceRecognizer_create()
+        self.face_recognizer.read('model/trained_model.yml')  # Load your trained model
         self.pack(fill=tk.BOTH, expand=True)
         self.create_widgets()
         self.update_quality_info()
@@ -99,8 +102,17 @@ class Application(tk.Frame):
         self.train_button = tk.Button(self.column3, text="Train model", command=self.train_model)
         self.train_button.pack(fill=tk.X, pady=5)
 
+        # Add the Live Preview button here
+        self.live_preview_button = tk.Button(self.column3, text="Live Preview", command=self.open_live_preview)
+        self.live_preview_button.pack(fill=tk.X, pady=5)
+
+        # Create a frame to push the QUIT button to the bottom
+        self.spacer_frame = tk.Frame(self.column3)
+        self.spacer_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Move the QUIT button to the bottom
         self.quit = tk.Button(self.column3, text="QUIT", fg="red", command=self.master.destroy)
-        self.quit.pack(fill=tk.X, pady=5)
+        self.quit.pack(fill=tk.X, pady=5, side=tk.BOTTOM)
 
     def update_quality_info(self):
         self.quality_tree.delete(*self.quality_tree.get_children())
@@ -201,3 +213,48 @@ class Application(tk.Frame):
                 self.update_quality_info()
                 self.select_first_image()
                 messagebox.showinfo("Delete Image", f"{self.current_image} has been deleted.")
+
+    def open_live_preview(self):
+        preview_window = tk.Toplevel(self.master)
+        preview_window.title("Live Preview")
+        preview_window.geometry("640x480")
+
+        video_frame = tk.Label(preview_window)
+        video_frame.pack()
+
+        cap = cv2.VideoCapture(0)
+
+        def update_frame():
+            ret, frame = cap.read()
+            if ret:
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                faces = self.face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+
+                for (x, y, w, h) in faces:
+                    face_roi = gray[y:y+h, x:x+w]
+                    label, confidence = self.face_recognizer.predict(face_roi)
+
+                    if label == 1:  # Assuming label 1 is the face we're looking for
+                        color = (0, 255, 0)  # Green
+                    else:
+                        color = (0, 0, 255)  # Red
+
+                    cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
+                    cv2.putText(frame, f"Confidence: {confidence:.2f}", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
+
+                cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                img = Image.fromarray(cv2image)
+                imgtk = ImageTk.PhotoImage(image=img)
+                video_frame.imgtk = imgtk
+                video_frame.configure(image=imgtk)
+                video_frame.after(10, update_frame)
+            else:
+                cap.release()
+
+        update_frame()
+
+        def on_closing():
+            cap.release()
+            preview_window.destroy()
+
+        preview_window.protocol("WM_DELETE_WINDOW", on_closing)
