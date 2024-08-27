@@ -216,47 +216,32 @@ class Application(tk.Frame):
                 self.select_first_image()
                 messagebox.showinfo("Delete Image", f"{self.current_image} has been deleted.")
 
+
     def open_live_preview(self):
         preview_window = tk.Toplevel(self.master)
         preview_window.title("Live Preview")
-        preview_window.geometry("640x480")
+        preview_window.geometry("840x680")
 
         video_frame = tk.Label(preview_window)
         video_frame.pack()
 
-        cap = cv2.VideoCapture(0)
+        cam = camera.Camera()
 
         def update_frame():
-            ret, frame = cap.read()
-            if ret:
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                faces = self.face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
-
-                for (x, y, w, h) in faces:
-                    face_roi = gray[y:y+h, x:x+w]
-                    label, confidence = self.face_recognizer.predict(face_roi)
-
-                    if label == 1:  # Assuming label 1 is the face we're looking for
-                        color = (0, 255, 0)  # Green
-                    else:
-                        color = (0, 0, 255)  # Red
-
-                    cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
-                    cv2.putText(frame, f"Confidence: {confidence:.2f}", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
-
-                cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                img = Image.fromarray(cv2image)
+            frame = cam.get_frame()
+            if frame is not None:
+                img = Image.fromarray(frame)
                 imgtk = ImageTk.PhotoImage(image=img)
                 video_frame.imgtk = imgtk
                 video_frame.configure(image=imgtk)
                 video_frame.after(10, update_frame)
             else:
-                cap.release()
+                cam.close()
 
         update_frame()
 
         def on_closing():
-            cap.release()
+            cam.close()
             preview_window.destroy()
 
         preview_window.protocol("WM_DELETE_WINDOW", on_closing)

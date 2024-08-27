@@ -1,5 +1,6 @@
 import cv2
 import os
+import numpy as np
 
 class Camera:
     def __init__(self):
@@ -9,7 +10,22 @@ class Camera:
         # Check if camera opened successfully
         if not self.cap.isOpened():
             print("Unable to read camera feed")
-    
+        
+        # Initialize face cascade and recognizer
+        self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        self.face_recognizer = cv2.face.LBPHFaceRecognizer_create()
+        
+        # Get the directory of the current script
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # Construct the path to the model file
+        model_path = os.path.join(current_dir, '..', 'model', 'trained_model.yml')
+        
+        # Check if the file exists before trying to read it
+        if os.path.exists(model_path):
+            self.face_recognizer.read(model_path)
+        else:
+            raise FileNotFoundError(f"Trained model file not found at {model_path}")
 
     def _open_camera_feed(self, instructions: str = "Press 'Q' to quit", path: str = None):
         """
@@ -91,6 +107,27 @@ class Camera:
             instructions = "Press 'C' to capture, 'Q' to quit"
             self._open_camera_feed(instructions, path)
 
+
+    def get_frame(self):
+        ret, frame = self.cap.read()
+        if ret:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = self.face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+
+            for (x, y, w, h) in faces:
+                face_roi = gray[y:y+h, x:x+w]
+                label, confidence = self.face_recognizer.predict(face_roi)
+
+                if label == 1:  # Assuming label 1 is the face we're looking for
+                    color = (0, 255, 0)  # Green
+                else:
+                    color = (0, 0, 255)  # Red
+
+                cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
+                cv2.putText(frame, f"Confidence: {confidence:.2f}", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
+
+            return cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        return None
 
     def close(self):
         """

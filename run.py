@@ -3,6 +3,7 @@ from gui import Application
 
 def main():
     root = tk.Tk()
+    root.title("Facial Recognition Managment")  # Add window title
     app = Application(master=root)
     app.mainloop()
 
