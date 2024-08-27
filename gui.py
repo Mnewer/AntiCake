@@ -86,7 +86,7 @@ class Application(tk.Frame):
         self.threshold_frame = tk.Frame(self.column3)
         self.threshold_frame.pack(fill=tk.X, pady=5)
 
-        self.threshold_label = tk.Label(self.threshold_frame, text="Threshold:")
+        self.threshold_label = tk.Label(self.threshold_frame, text="Laplacian Threshold:")
         self.threshold_label.pack(side=tk.LEFT)
 
         self.threshold_input = tk.Entry(self.threshold_frame, width=5)
