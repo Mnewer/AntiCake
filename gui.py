@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
-from utils import imageQualityCheck, removeUndetectable, alignFaces
+from utils import imageQualityCheck, removeUndetectable, alignFaces, camera
 import os
 import cv2
 import numpy as np
@@ -199,8 +199,10 @@ class Application(tk.Frame):
         self.select_first_image()
 
     def capture_image(self):
-        # Implement image capture functionality
-        pass
+        cam = camera.Camera()
+        cam.capture_image()
+        self.update_quality_info()
+        self.select_first_image()
 
     def train_model(self):
         # Implement model training functionality
