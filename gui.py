@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
-from utils import imageQualityCheck, removeUndetectable, alignFaces, camera
+from utils import imageQualityCheck, alignFaces, camera, prep_images
+
 import os
 import cv2
 import numpy as np
@@ -14,7 +15,8 @@ class Application(tk.Frame):
         self.current_image = None
         self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
         self.face_recognizer = cv2.face.LBPHFaceRecognizer_create()
-        self.face_recognizer.read('model/trained_model.yml')  # Load your trained model
+        self.face_recognizer.read('model/trained_model.yml')
+        self.prep_images = prep_images.PrepImages(self.image_folder)
         self.pack(fill=tk.BOTH, expand=True)
         self.create_widgets()
         self.update_quality_info()
@@ -121,14 +123,14 @@ class Application(tk.Frame):
                 image_path = os.path.join(self.image_folder, filename)
                 image = cv2.imread(image_path)
                 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-                laplacian_variance = imageQualityCheck.variance_of_laplacian(gray)
+                laplacian_variance = self.prep_images.variance_of_laplacian(gray)
                 
                 # Detect face
                 faces = self.face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
                 face_detected = "Yes" if len(faces) > 0 else "No"
                 
                 self.quality_tree.insert('', 'end', values=(filename, f"{laplacian_variance:.2f}", face_detected))
-
+    
     def select_first_image(self):
         if self.quality_tree.get_children():
             first_item = self.quality_tree.get_children()[0]
@@ -184,7 +186,7 @@ class Application(tk.Frame):
     def remove_unclear_images(self):
         try:
             threshold = int(self.threshold_input.get())
-            removed_count = imageQualityCheck.remove_unclear_images(self.image_folder, threshold)
+            removed_count = self.prep_images.remove_unclear_images(self.image_folder, threshold)
             messagebox.showinfo("Remove Unclear Images", f"Removed {removed_count} unclear images.")
             self.update_quality_info()
             self.select_first_image()
@@ -192,11 +194,12 @@ class Application(tk.Frame):
             messagebox.showerror("Error", "Please enter a valid threshold value.")
 
     def prep_images(self):
-        removed_count = removeUndetectable.remove_undetectable_faces(self.image_folder)
-        aligned_count = alignFaces.align_faces(self.image_folder)
-        messagebox.showinfo("Prep Images", f"Removed {removed_count} images without detectable faces.\nAligned {aligned_count} faces.")
-        self.update_quality_info()
-        self.select_first_image()
+        # removed_count = self.prep_images.remove_undetectable_faces()
+        # aligned_count = alignFaces.align_faces(self.image_folder)
+        # messagebox.showinfo("Prep Images", f"Removed {removed_count} images without detectable faces.\nAligned {aligned_count} faces.")
+        # self.update_quality_info()
+        # self.select_first_image()
+        pass
 
     def capture_image(self):
         cam = camera.Camera()
