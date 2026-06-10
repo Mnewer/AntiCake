@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
-from utils import imageQualityCheck, alignFaces, camera, prep_images
+from utils import imageQualityCheck, alignFaces, camera
+from utils.prep_images import PrepImages
+from utils import test
 
 import os
 import cv2
@@ -16,7 +18,7 @@ class Application(tk.Frame):
         self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
         self.face_recognizer = cv2.face.LBPHFaceRecognizer_create()
         self.face_recognizer.read('model/trained_model.yml')
-        self.prep_images = prep_images.PrepImages(self.image_folder)
+        self.prep_images = PrepImages(self.image_folder)
         self.pack(fill=tk.BOTH, expand=True)
         self.create_widgets()
         self.update_quality_info()
@@ -98,7 +100,7 @@ class Application(tk.Frame):
         self.remove_unclear_button = tk.Button(self.column3, text="Remove unclear images", command=self.remove_unclear_images)
         self.remove_unclear_button.pack(fill=tk.X, pady=5)
 
-        self.prep_images_button = tk.Button(self.column3, text="Prep Images", command=self.prep_images)
+        self.prep_images_button = tk.Button(self.column3, text="Prep Images", command= self.test)
         self.prep_images_button.pack(fill=tk.X, pady=5)
 
         self.train_button = tk.Button(self.column3, text="Train model", command=self.train_model)
@@ -194,12 +196,15 @@ class Application(tk.Frame):
             messagebox.showerror("Error", "Please enter a valid threshold value.")
 
     def prep_images(self):
-        # removed_count = self.prep_images.remove_undetectable_faces()
-        # aligned_count = alignFaces.align_faces(self.image_folder)
-        # messagebox.showinfo("Prep Images", f"Removed {removed_count} images without detectable faces.\nAligned {aligned_count} faces.")
-        # self.update_quality_info()
-        # self.select_first_image()
-        pass
+        try:
+            threshold = int(self.threshold_input.get())  # Get the threshold from the input
+            prep_images_instance = PrepImages(self.image_folder)
+            prep_images_instance.prepare_images(threshold)  # Start the image preparation process
+            messagebox.showinfo("Prep Images", "Image preparation completed successfully.")
+            self.update_quality_info()  # Update the quality info after processing
+            self.select_first_image()  # Select the first image after processing
+        except ValueError:
+            messagebox.showerror("Error", "Please enter a valid threshold value.")
 
     def capture_image(self):
         cam = camera.Camera()
@@ -246,5 +251,10 @@ class Application(tk.Frame):
         def on_closing():
             cam.close()
             preview_window.destroy()
+
+
+        def test(self):
+            print("gui test")
+            test.test2()
 
         preview_window.protocol("WM_DELETE_WINDOW", on_closing)
